@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
 import re
-import matplotlib.pyplot as plt
 
 WIKI_URL = r"https://doughboys.fandom.com/wiki/Episodes"
 EXT_FILENAME = './doughboys_episode_data.csv'
@@ -13,21 +12,28 @@ def get_ext_table( db_wiki_df ):
     db_ext_df = pd.DataFrame()
     for ep_idx in range(len(db_wiki_df)):
         ep_row = db_wiki_df.iloc[ep_idx]
-        restaurant, guest_list_1 = process_episode_title(ep_row['Title'])
+        restaurant, guest_list_1, live = process_episode_title(ep_row['Title'])
         guest_list_2 = process_episode_notes(ep_row['Notes'])
         guest_list = guest_list_2 if len(guest_list_2) > len(guest_list_1) else guest_list_1
         ep_row['Topic'] = restaurant
+        ep_row['Live'] = live
         for guest_idx, guest_name in enumerate(guest_list):
             ep_row[f'Guest {guest_idx+1}'] = guest_name
         db_ext_df = pd.concat([db_ext_df,ep_row.to_frame()],axis=1)
     return db_ext_df.T
 
 def process_episode_title(title):
+    live_search = re.search(r'^(.+?) \(LIVE\)$',title)
+    if live_search:
+        live = True
+        title = live_search.group(1)
+    else:
+        live = False
     title_parts = title.split(' with ')
     n_parts = len(title_parts)
     restaurant = title_parts[0] if n_parts > 1 else np.nan
     guest_list = title_parts[-1].split(' & ') if n_parts > 1 else []
-    return restaurant, guest_list
+    return restaurant, guest_list, live
 
 def process_episode_notes(notes):
     if isinstance(notes,str):
